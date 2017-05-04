@@ -1,0 +1,111 @@
+description = """Rabin Fingerprint"""
+
+// Apply the java plugin to add support for Java
+buildscript {
+    repositories {
+        mavenLocal()
+        maven {
+            url 'https://artifactory.sgn.com/artifactory/repo'
+            credentials {
+                username mavenUser
+                password mavenPassword
+            }
+        }
+    }
+    dependencies {
+        classpath 'com.tkruse.gradle:gradle-groovysh-plugin:1.0.8'
+        classpath 'org.gradlefx:gradlefx:1.3.2-SNAPSHOT'
+    }
+}
+
+def getWorkingBranch() {
+    // Triple double-quotes for the breaklines
+    def workingBranch = """git rev-parse --abbrev-ref HEAD""".execute().text.trim()
+    return workingBranch
+}
+
+def getGitVersion() {
+    def gitDir = file('.git')
+    def desc = "git --git-dir=$gitDir describe --tags --dirty --long".execute().text.trim()
+    def match = desc =~ /^(.*)-(.*)-g(.{7})(-dirty)?$/
+    if (match.size() == 0)
+        return 'none'
+    def (_, tag, index, commit, isDirty) = match[0]
+    if (index != '0' || isDirty)
+        tag += '-SNAPSHOT'
+    return tag
+}
+
+ext.gitVersion = getGitVersion()
+
+task wrapper(type: Wrapper) {
+    description 'Generates gradlew and gradlew.bat bootstrap scripts'
+    gradleVersion = '2.10'
+}
+
+apply plugin: 'com.github.tkruse.groovysh'
+apply plugin: 'maven'
+apply plugin: 'application'
+apply plugin: 'eclipse'
+
+group 'com.jamcity'
+
+repositories {
+    mavenLocal()
+    maven {
+        url 'https://artifactory.sgn.com/artifactory/repo'
+        credentials {
+            username mavenUser
+            password mavenPassword
+        }
+    }
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: 'https://artifactory.sgn.com/artifactory/libs-release-local') {
+                authentication(userName: mavenUser, password: mavenPassword)
+            }
+            snapshotRepository(url: 'https://artifactory.sgn.com/artifactory/libs-snapshot-local') {
+                authentication(userName: mavenUser, password: mavenPassword)
+            }
+        }
+    }
+}
+
+version = gitVersion
+
+mainClassName = 'com.jamcity.rabinfingerprint.Main'
+
+// In this section you declare the dependencies for your production and test code
+dependencies {
+    compile group: 'com.google.guava', name: 'guava', version:'16.0.1'
+    testCompile group: 'junit', name: 'junit', version:'4.11'
+}
+
+sourceSets {
+    sample
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+task version {
+    description 'Display current version'
+    doLast {
+        println "Version: $gitVersion"
+    }
+}

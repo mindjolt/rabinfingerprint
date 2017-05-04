@@ -318,7 +318,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>org.rabinfingerprint.Main</mainClass>
+							<mainClass>com.jamcity.rabinfingerprint.Main</mainClass>
 						</manifest>
 					</archive>
 					<descriptorRefs>
